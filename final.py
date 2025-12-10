@@ -1,8 +1,25 @@
+"""
+Neural Network from Scratch for Image Classification
+Team: 20240806_20240817_20240819.py
+Authors: Shahd Mostafa, Nourhan Nour, Ziad Mohamed
+This code implements a customizable feedforward neural network to classify images from the MNIST dataset.
+
+Features:
+- Loading MNIST data from a local .npz file.
+- User-defined architecture (number of hidden layers and neurons).
+- Choice of activation functions (ReLU or Sigmoid).
+- Training with backpropagation and gradient descent.
+- Interactive prediction on test images with visualization.
+- Modular structure for easy understanding and modification.
+- Clear prompts and validation for user inputs.
+- Comprehensive comments for clarity.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 # ================================================================
-# 1) LOAD MNIST FROM mnist.npz (NUMPY ONLY)
+# 1) LOAD MNIST FROM mnist.npz
 # ================================================================
 def load_mnist_npz():
     data = np.load("mnist.npz")
@@ -48,9 +65,9 @@ def relu_deriv(x):
 # ================================================================
 # 3) SOFTMAX + LOSS
 # ================================================================
-def softmax(z):
+def softmax(z): 
     e = np.exp(z - np.max(z, axis=1, keepdims=True))
-    return e / np.sum(e, axis=1, keepdims=True)
+    return e / np.sum(e, axis=1, keepdims=True) #keepdims to maintain shape as 2D array
 
 def cross_entropy(pred, true):
     return -np.mean(np.sum(true * np.log(pred + 1e-8), axis=1))
@@ -60,8 +77,8 @@ def cross_entropy(pred, true):
 # 4) NEURAL NETWORK CLASS (UNCHANGED)
 # ================================================================
 class NeuralNetwork:
-    def __init__(self, layer_sizes, activation="relu", lr=0.01):
-        self.lr = lr
+    def __init__(self, layer_sizes, activation="relu", learning_rate=0.01):
+        self.learning_rate = learning_rate
 
         if activation == "relu":
             self.act = relu
@@ -73,7 +90,7 @@ class NeuralNetwork:
         self.weights = []
         self.biases = []
 
-        # Xavier Initialization
+        # Xavier Initialization for weights and zeros for biases
         for i in range(len(layer_sizes) - 1):
             w = np.random.randn(layer_sizes[i], layer_sizes[i+1]) * np.sqrt(2 / layer_sizes[i])
             b = np.zeros((1, layer_sizes[i+1]))
@@ -85,15 +102,15 @@ class NeuralNetwork:
         zs = []
 
         for i in range(len(self.weights) - 1):
-            z = activations[-1] @ self.weights[i] + self.biases[i]
-            zs.append(z)
-            a = self.act(z)
-            activations.append(a)
+            z = activations[-1] @ self.weights[i] + self.biases[i] # z=wx+b
+            zs.append(z) # store pre-activation values
+            a = self.act(z) # apply activation function either ReLU or Sigmoid
+            activations.append(a) # store activations
 
         z = activations[-1] @ self.weights[-1] + self.biases[-1]
         zs.append(z)
-        probs = softmax(z)
-        activations.append(probs)
+        probs = softmax(z) # output layer with softmax
+        activations.append(probs) # store final output activations
 
         return activations, zs
 
@@ -119,8 +136,8 @@ class NeuralNetwork:
 
     def update(self, grads_w, grads_b):
         for i in range(len(self.weights)):
-            self.weights[i] -= self.lr * grads_w[i]
-            self.biases[i] -= self.lr * grads_b[i]
+            self.weights[i] -= self.learning_rate * grads_w[i]
+            self.biases[i] -= self.learning_rate * grads_b[i]
 
     def train(self, X, y, epochs=10, batch_size=128):
         n = len(X)
@@ -189,8 +206,8 @@ while True:
 # ---- Learning rate ----
 while True:
     try:
-        lr = float(input("\nLearning rate : "))
-        if lr <= 0:
+        learning_rate = float(input("\nLearning rate : "))
+        if learning_rate <= 0:
             raise ValueError
         break
     except ValueError:
@@ -227,7 +244,7 @@ y_train2 = y_train_oh[val_size:]
 # 7) BUILD + TRAIN NETWORK
 # ================================================================
 layers = [784] + hidden_layers + [10]
-nn = NeuralNetwork(layers, activation=activation, lr=lr)
+nn = NeuralNetwork(layers, activation=activation, learning_rate=learning_rate)
 
 print("\nTraining Network...")
 nn.train(X_train2, y_train2, epochs=epochs, batch_size=128)

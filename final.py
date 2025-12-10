@@ -12,7 +12,7 @@ def load_mnist_npz():
     X_test = data["x_test"]
     y_test = data["y_test"]
 
-    # Normalize
+    # Normalize pixel values to [0,1]
     X_train = X_train / 255.0
     X_test = X_test / 255.0
 
@@ -20,6 +20,7 @@ def load_mnist_npz():
     X_train = X_train.reshape(len(X_train), -1)
     X_test = X_test.reshape(len(X_test), -1)
 
+    # One-hot encode labels
     num_classes = 10
     y_train_oh = np.eye(num_classes)[y_train]
     y_test_oh = np.eye(num_classes)[y_test]
@@ -56,7 +57,7 @@ def cross_entropy(pred, true):
 
 
 # ================================================================
-# 4) NEURAL NETWORK CLASS (FULL — FROM SCRATCH)
+# 4) NEURAL NETWORK CLASS (UNCHANGED)
 # ================================================================
 class NeuralNetwork:
     def __init__(self, layer_sizes, activation="relu", lr=0.01):
@@ -79,7 +80,6 @@ class NeuralNetwork:
             self.weights.append(w)
             self.biases.append(b)
 
-    # ------------------------------------------------------
     def forward(self, X):
         activations = [X]
         zs = []
@@ -90,7 +90,6 @@ class NeuralNetwork:
             a = self.act(z)
             activations.append(a)
 
-        # Output layer (softmax)
         z = activations[-1] @ self.weights[-1] + self.biases[-1]
         zs.append(z)
         probs = softmax(z)
@@ -98,11 +97,9 @@ class NeuralNetwork:
 
         return activations, zs
 
-    # ------------------------------------------------------
     def backward(self, activations, zs, y_true):
         grads_w = []
         grads_b = []
-
         m = len(y_true)
         delta = activations[-1] - y_true
 
@@ -120,13 +117,11 @@ class NeuralNetwork:
 
         return grads_w, grads_b
 
-    # ------------------------------------------------------
     def update(self, grads_w, grads_b):
         for i in range(len(self.weights)):
             self.weights[i] -= self.lr * grads_w[i]
             self.biases[i] -= self.lr * grads_b[i]
 
-    # ------------------------------------------------------
     def train(self, X, y, epochs=10, batch_size=128):
         n = len(X)
         for ep in range(epochs):
@@ -134,7 +129,6 @@ class NeuralNetwork:
             X, y = X[idx], y[idx]
 
             losses = []
-
             for i in range(0, n, batch_size):
                 Xb = X[i:i+batch_size]
                 yb = y[i:i+batch_size]
@@ -148,38 +142,69 @@ class NeuralNetwork:
 
             print(f"Epoch {ep+1}/{epochs}   Loss: {np.mean(losses):.4f}")
 
-    # ------------------------------------------------------
     def predict(self, X):
         a, _ = self.forward(X)
         return np.argmax(a[-1], axis=1)
 
 
 # ================================================================
-# 5) ========= USER INTERACTIVE SETUP (Same Style as Big Code) ===
+# 5) USER INTERACTIVE SETUP + VALIDATION
 # ================================================================
 print("\n==============================")
 print("  Fully Customizable MNIST NN")
 print("==============================")
 
-# 1) Number of layers
-num_hidden = int(input("How many hidden layers? : "))
+# ---- Hidden layers input ----
+while True:
+    try:
+        num_hidden = int(input("How many hidden layers? : "))
+        if num_hidden < 0:
+            raise ValueError
+        break
+    except ValueError:
+        print("❌ Please enter a valid non-negative integer.")
 
-# 2) Neurons per layer
 hidden_layers = []
 for i in range(num_hidden):
-    nodes = int(input(f"Number of neurons for layer {i+1}: "))
-    hidden_layers.append(nodes)
+    while True:
+        try:
+            nodes = int(input(f"Number of neurons for layer {i+1}: "))
+            if nodes <= 0:
+                raise ValueError
+            hidden_layers.append(nodes)
+            break
+        except ValueError:
+            print("❌ Please enter a positive integer for neurons.")
 
-# 3) Activation function
+# ---- Activation function input ----
 print("\nChoose activation: 1 = ReLU, 2 = Sigmoid")
-act_choice = input("Your choice: ")
-activation = "relu" if act_choice == "1" else "sigmoid"
+while True:
+    act_choice = input("Your choice: ")
+    if act_choice in ["1", "2"]:
+        activation = "relu" if act_choice == "1" else "sigmoid"
+        break
+    else:
+        print("❌ Enter 1 or 2 only.")
 
-# 4) Learning rate
-lr = float(input("\nLearning rate : "))
+# ---- Learning rate ----
+while True:
+    try:
+        lr = float(input("\nLearning rate : "))
+        if lr <= 0:
+            raise ValueError
+        break
+    except ValueError:
+        print("❌ Enter a positive number.")
 
-# 5) Epochs
-epochs = int(input("Number of epochs : "))
+# ---- Epochs ----
+while True:
+    try:
+        epochs = int(input("Number of epochs : "))
+        if epochs <= 0:
+            raise ValueError
+        break
+    except ValueError:
+        print("❌ Enter a positive integer.")
 
 
 # ================================================================
@@ -199,7 +224,7 @@ X_train2 = X_train[val_size:]
 y_train2 = y_train_oh[val_size:]
 
 # ================================================================
-# 7) BUILD NETWORK
+# 7) BUILD + TRAIN NETWORK
 # ================================================================
 layers = [784] + hidden_layers + [10]
 nn = NeuralNetwork(layers, activation=activation, lr=lr)
@@ -219,22 +244,27 @@ print(" Final Test Accuracy:", accuracy)
 print("==============================")
 
 # ================================================================
-# 9) INTERACTIVE PREDICT + SHOW IMAGE
+# 9) INTERACTIVE PREDICT + IMAGE DISPLAY
 # ================================================================
 while True:
-    idx = int(input("\nEnter test image index to predict (0-9999), or -1 to exit: "))
-    if idx == -1:
-        break
+    try:
+        idx = int(input("\nEnter test image index (0–9999) or -1 to exit: "))
+        if idx == -1:
+            break
+        if not (0 <= idx < len(X_test)):
+            raise ValueError
+    except ValueError:
+        print("❌ Please enter a valid index between 0 and 9999.")
+        continue
 
-    img_flat = X_test[idx]          # flattened 784 vector
-    img = img_flat.reshape(28, 28)  # reshape to original for display
+    img_flat = X_test[idx]
+    img = img_flat.reshape(28, 28)
 
     pred = nn.predict(img_flat.reshape(1, -1))[0]
 
     print(f"True label: {y_test_raw[idx]}  |  Predicted: {pred}")
 
-    # ==== DISPLAY IMAGE ====
     plt.imshow(img, cmap="gray")
-    plt.title(f"Prediction: {pred}   |   True: {y_test_raw[idx]}")
+    plt.title(f"Prediction: {pred} | True: {y_test_raw[idx]}")
     plt.axis("off")
     plt.show()

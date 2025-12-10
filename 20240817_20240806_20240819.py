@@ -1,7 +1,7 @@
 """
 Neural Network from Scratch for Image Classification
-Team: 20240817_20240806_20240819.py
-Authors: Nourhan Nour, Shahd Mostafa, Ziad Mohamed
+Team: 20240806_20240817_20240819.py
+Authors: Shahd Mostafa, Nourhan Nour, Ziad Mohamed
 
 The network can be configured by the user (hidden layers, neurons, activation function).
 It trains on the DIGITS dataset (scaled to MNIST format) from scikit-learn.
@@ -20,7 +20,9 @@ def load_digits_mnist_format():
     Load the DIGITS dataset from scikit-learn and convert it to MNIST-like format.
     
     DIGITS dataset characteristics:
+    - 1797 total samples
     - 10 classes (digits 0-9)
+    - Original size: 8x8 pixels (64 features)
     
     We convert it to 28x28 pixels (784 features) to match MNIST format.
     
@@ -127,6 +129,7 @@ def preprocess_data(images, labels, num_classes=10):
     
     return images_normalized, labels_onehot, labels
 
+
 def train_val_test_split(X, y, val_ratio=0.1, test_ratio=0.1, random_seed=42):
     """
     Split data into training, validation, and test sets.
@@ -166,6 +169,7 @@ def train_val_test_split(X, y, val_ratio=0.1, test_ratio=0.1, random_seed=42):
     print(f"  • Test set: {len(X_test)} samples")
     
     return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+
 
 # ============================================
 # 2. ACTIVATION FUNCTIONS SECTION
@@ -209,6 +213,7 @@ class Activation:
             'relu': (Activation.relu, Activation.relu_derivative)
         }
         return activations.get(name, (Activation.sigmoid, Activation.sigmoid_derivative))
+
 
 # ============================================
 # 3. LOSS FUNCTION SECTION
@@ -399,13 +404,14 @@ class NeuralNetwork:
         y_pred = self.predict(X)
         return np.mean(y_pred == y_true)
 
+
 # ============================================
 # 5. MAIN PROGRAM - USER INTERFACE
 # ============================================
 
 def main():
     print("=" * 70)
-    print("NEURAL NETWORK FOR DIGIT CLASSIFICATION")
+    print("NEURAL NETWORK for Digit CLASSIFICATION")
     print("Dataset: DIGITS (scaled to MNIST format) from scikit-learn")
     print("=" * 70)
     
@@ -453,7 +459,7 @@ def main():
     while True:
         try:
             num_hidden_layers = int(input("\nEnter number of hidden layers: "))
-            if 0 < num_hidden_layers:
+            if num_hidden_layers > 0:
                 print(f"✓ Selected: {num_hidden_layers} hidden layer(s)")
                 break
             else:
@@ -467,15 +473,12 @@ def main():
     print("\n" + "-"*50)
     print("NEURONS PER HIDDEN LAYER")
     print("-"*50)
-    print("Recommendations for DIGITS dataset:")
-    print("  • Small dataset: use smaller networks")
-    print("  • Too large: may overfit quickly")
     
     for i in range(num_hidden_layers):
         while True:
             try:
-                neurons = int(input(f"\nEnter neurons in hidden layer {i+1} : "))
-                if 1 <= neurons <= 512:
+                neurons = int(input(f"\nEnter neurons in hidden layer {i+1}: "))
+                if 1 <= neurons <= 512: # Limit to reasonable size for this dataset to avoid overfitting
                     layer_sizes.append(neurons)
                     print(f"✓ Layer {i+1}: {neurons} neurons")
                     break
@@ -507,11 +510,11 @@ def main():
     while True:
         try:
             learning_rate = float(input("\nEnter learning rate: "))
-            if 0 < learning_rate:
+            if learning_rate > 0:
                 print(f"✓ Learning rate: {learning_rate}")
                 break
             else:
-                print("⚠️  Please enter a value greater than 0 ")
+                print("⚠️  Please enter a value greater than 0")
         except ValueError:
             print("❌ Invalid input. Please enter a number.")
     
@@ -568,4 +571,4 @@ if __name__ == "__main__":
     """
     Entry point of the program.
     """
-    main()   
+    main()

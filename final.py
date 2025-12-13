@@ -8,7 +8,7 @@ Features:
 - Loading MNIST data from a local .npz file.
 - User-defined architecture (number of hidden layers and neurons).
 - Choice of activation functions (ReLU or Sigmoid).
-- Training with backpropagation and gradient descent.
+- Training with back propagation and gradient descent.
 - Interactive prediction on test images with visualization.
 - Modular structure for easy understanding and modification.
 - Clear prompts and validation for user inputs.
@@ -18,9 +18,8 @@ Features:
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ================================================================
-# 1) LOAD MNIST FROM mnist.npz
-# ================================================================
+# 1) LOAD MNIST Dataset
+# ---------------------------------
 def load_mnist_npz():
     data = np.load("mnist.npz")
 
@@ -32,17 +31,16 @@ def load_mnist_npz():
     X_train = X_train / 255.0
     X_test = X_test / 255.0
 
-    X_train = X_train.reshape(len(X_train), -1)
+    X_train = X_train.reshape(len(X_train), -1) #transfer to vector
     X_test = X_test.reshape(len(X_test), -1)
 
-    y_train_oh = np.eye(10)[y_train]
+    y_train_oh = np.eye(10)[y_train]#vector one-hot encoding
     y_test_oh = np.eye(10)[y_test]
 
     return X_train, y_train_oh, X_test, y_test_oh, y_train, y_test
 
-# ================================================================
 # 2) ACTIVATION FUNCTIONS
-# ================================================================
+# ----------------------------------------
 def sigmoid(x): 
     return 1/(1+np.exp(-x))
 
@@ -56,19 +54,17 @@ def relu(x):
 def relu_deriv(x): 
     return (x > 0).astype(float)
 
-# ================================================================
 # 3) SOFTMAX + LOSS
-# ================================================================
+# -----------------------------
 def softmax(z): # keepdims = True to maintain 2D shape
-    e = np.exp(z - np.max(z, axis=1, keepdims=True))
+    e = np.exp(z - np.max(z, axis=1, keepdims=True)) # no overflow
     return e / np.sum(e, axis=1, keepdims=True)
 
 def cross_entropy(pred, true): 
     return -np.mean(np.sum(true * np.log(pred + 1e-8), axis=1))
 
-# ================================================================
-# 4) NEURAL NETWORK (WITH SOFTMAX OUTPUT)
-# ================================================================
+# 4) NEURAL NETWORK
+# --------------------------------
 class NeuralNetwork:
     def __init__(self, layer_sizes, activation="relu", learning_rate=0.01):
         self.learning_rate = learning_rate
@@ -89,6 +85,7 @@ class NeuralNetwork:
             self.weights.append(w)
             self.biases.append(b)
 
+    # Forward Propagation
     def forward(self, X):
         activations = [X]
         zs = []
@@ -106,6 +103,7 @@ class NeuralNetwork:
 
         return activations, zs
 
+    # Backward Propagation
     def backward(self, activations, zs, y_true):
         grads_w = []
         grads_b = []
@@ -159,26 +157,21 @@ class NeuralNetwork:
 
             print(f"Epoch {ep+1}/{epochs}  |  Train Loss = {np.mean(batch_losses):.4f}  |  Val Loss = {val_loss:.4f}")
 
-    # -------------------------------------------------------
     #  PREDICT 
-    # -------------------------------------------------------
     def predict(self, X):
         a, _ = self.forward(X)
         return np.argmax(a[-1], axis=1)
 
-
-
-# ================================================================
-# 5) USER INPUTS (UNCHANGED)
-# ================================================================
-print("\n==============================")
-print("  Fully Customizable MNIST NN")
-print("==============================")
+# 5) USER INPUTS
+# -----------------------
+print("Welcome to the Neural Network Trainer :)")
+print("=================================")
 
 while True:
     try:
         num_hidden = int(input("How many hidden layers? : "))
-        if num_hidden < 0: raise ValueError
+        if num_hidden < 0: 
+            raise ValueError
         break
     except ValueError:
         print("❌ Please enter a valid non-negative integer.")
@@ -194,7 +187,7 @@ for i in range(num_hidden):
         except ValueError:
             print("❌ Please enter a positive integer for neurons.")
 
-print("\nChoose activation: 1 = ReLU, 2 = Sigmoid")
+print("\nChoose activation: 1 = Relu, 2 = Sigmoid")
 while True:
     act_choice = input("Your choice: ")
     if act_choice in ["1", "2"]:
@@ -205,7 +198,8 @@ while True:
 while True:
     try:
         learning_rate = float(input("\nLearning rate : "))
-        if learning_rate <= 0: raise ValueError
+        if learning_rate <= 0: 
+            raise ValueError
         break
     except ValueError:
         print("❌ Enter a positive number.")
@@ -213,15 +207,14 @@ while True:
 while True:
     try:
         epochs = int(input("Number of epochs : "))
-        if epochs <= 0: raise ValueError
+        if epochs <= 0: 
+            raise ValueError
         break
     except ValueError:
         print("❌ Enter a positive integer.")
 
-
-# ================================================================
 # 6) LOAD DATA
-# ================================================================
+# ----------------------
 print("\nLoading mnist.npz ...")
 X_train, y_train_oh, X_test, y_test_oh, y_train_raw, y_test_raw = load_mnist_npz()
 
@@ -234,30 +227,24 @@ y_val = y_train_oh[:val_size]
 X_train2 = X_train[val_size:]
 y_train2 = y_train_oh[val_size:]
 
-
-# ================================================================
 # 7) BUILD + TRAIN
-# ================================================================
+# --------------------------
 layers = [784] + hidden_layers + [10]
 nn = NeuralNetwork(layers, activation=activation, learning_rate=learning_rate)
 
 print("\nTraining Network...")
 nn.train(X_train2, y_train2, X_val, y_val, epochs=epochs, batch_size=128)
 
-
-# ================================================================
 # 8) TEST ACCURACY
-# ================================================================
+# ----------------------------
 pred_test = nn.predict(X_test)
 accuracy = np.mean(pred_test == y_test_raw)
 
-print("\n==============================")
 print(" Final Test Accuracy:", accuracy)
 print("==============================")
 
-# ================================================================
 # 9) INTERACTIVE PREDICTION
-# ================================================================
+# -------------------------------------------
 while True:
     try:
         idx = int(input("\nEnter test image index (0-9999) or -1 to exit: "))

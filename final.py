@@ -8,7 +8,7 @@ Features:
 - Loading MNIST data from a local .npz file.
 - User-defined architecture (number of hidden layers and neurons).
 - Choice of activation functions (ReLU or Sigmoid).
-- Training with back propagation and gradient descent.
+- Training with backpropagation and gradient descent.
 - Interactive prediction on test images with visualization.
 - Modular structure for easy understanding and modification.
 - Clear prompts and validation for user inputs.
@@ -18,8 +18,7 @@ Features:
 import numpy as np
 import matplotlib.pyplot as plt
 
-# 1) LOAD MNIST Dataset
-# ---------------------------------
+# 1) LOAD MNIST FROM mnist.npz
 def load_mnist_npz():
     data = np.load("mnist.npz")
 
@@ -31,16 +30,15 @@ def load_mnist_npz():
     X_train = X_train / 255.0
     X_test = X_test / 255.0
 
-    X_train = X_train.reshape(len(X_train), -1) #transfer to vector
+    X_train = X_train.reshape(len(X_train), -1)  # matrix to vector
     X_test = X_test.reshape(len(X_test), -1)
 
-    y_train_oh = np.eye(10)[y_train]#vector one-hot encoding
+    y_train_oh = np.eye(10)[y_train] # vector o h
     y_test_oh = np.eye(10)[y_test]
 
     return X_train, y_train_oh, X_test, y_test_oh, y_train, y_test
 
-# 2) ACTIVATION FUNCTIONS
-# ----------------------------------------
+# 2) ACTIVATION FUNCTIONS :
 def sigmoid(x): 
     return 1/(1+np.exp(-x))
 
@@ -55,16 +53,15 @@ def relu_deriv(x):
     return (x > 0).astype(float)
 
 # 3) SOFTMAX + LOSS
-# -----------------------------
-def softmax(z): # keepdims = True to maintain 2D shape
-    e = np.exp(z - np.max(z, axis=1, keepdims=True)) # no overflow
+# keepdims = True to maintain 2D shape
+def softmax(z): 
+    e = np.exp(z - np.max(z, axis=1, keepdims=True)) # no over flow
     return e / np.sum(e, axis=1, keepdims=True)
 
-def cross_entropy(pred, true): 
-    return -np.mean(np.sum(true * np.log(pred + 1e-8), axis=1))
+def cross_entropy(pred, true):  # best error calculation
+    return -np.mean(np.sum(true * np.log(pred + 1e-8), axis=1)) # avoid log 0
 
-# 4) NEURAL NETWORK
-# --------------------------------
+# 4) NEURAL NETWORK (WITH SOFTMAX OUTPUT)
 class NeuralNetwork:
     def __init__(self, layer_sizes, activation="relu", learning_rate=0.01):
         self.learning_rate = learning_rate
@@ -79,16 +76,15 @@ class NeuralNetwork:
         self.weights = []
         self.biases = []
 
-        for i in range(len(layer_sizes) - 1):
+        for i in range(len(layer_sizes) - 1): #random w , b
             w = np.random.randn(layer_sizes[i], layer_sizes[i+1]) * np.sqrt(2 / layer_sizes[i])
             b = np.zeros((1, layer_sizes[i+1]))
             self.weights.append(w)
             self.biases.append(b)
 
-    # Forward Propagation
     def forward(self, X):
         activations = [X]
-        zs = []
+        zs = []  #net j
 
         for i in range(len(self.weights)-1):
             z = activations[-1] @ self.weights[i] + self.biases[i]
@@ -103,14 +99,15 @@ class NeuralNetwork:
 
         return activations, zs
 
-    # Backward Propagation
     def backward(self, activations, zs, y_true):
         grads_w = []
         grads_b = []
         m = len(y_true)
 
         delta = activations[-1] - y_true
-        grads_w.insert(0, activations[-2].T @ delta / m)
+
+        #∂Loss / ∂W = (A_previous_layerᵀ × delta) / m 
+        grads_w.insert(0, activations[-2].T @ delta / m)  #axis 0 col by col , axis 1 row by row
         grads_b.insert(0, np.sum(delta, axis=0, keepdims=True) / m)
 
         for i in reversed(range(1, len(self.weights)-1)):
@@ -130,19 +127,29 @@ class NeuralNetwork:
             self.biases[i] -= self.learning_rate * grads_b[i]
 
     # TRAIN  
-    def train(self, X_train, y_train, X_val, y_val, epochs=10, batch_size=128):
+    def train(self, X_train, y_train, X_val, y_val,
+          epochs=10, batch_size=128, patience=5):
+
         n = len(X_train)
+        best_val_loss = np.inf
+        patience_counter = 0
+
+        # Store best weights
+        best_weights = None
+        best_biases = None
 
         for ep in range(epochs):
+            # Shuffle training data
             idx = np.random.permutation(n)
             X_train = X_train[idx]
             y_train = y_train[idx]
 
             batch_losses = []
 
+            # Mini-batch training
             for i in range(0, n, batch_size):
-                Xb = X_train[i:i+batch_size]
-                yb = y_train[i:i+batch_size]
+                Xb = X_train[i:i + batch_size]
+                yb = y_train[i:i + batch_size]
 
                 activations, nets = self.forward(Xb)
                 loss = cross_entropy(activations[-1], yb)
@@ -151,27 +158,51 @@ class NeuralNetwork:
                 grads_w, grads_b = self.backward(activations, nets, yb)
                 self.update(grads_w, grads_b)
 
-            # Validation
+            # ---- Validation ----
             val_pred, _ = self.forward(X_val)
             val_loss = cross_entropy(val_pred[-1], y_val)
 
-            print(f"Epoch {ep+1}/{epochs}  |  Train Loss = {np.mean(batch_losses):.4f}  |  Val Loss = {val_loss:.4f}")
+            print(
+                f"Epoch {ep+1}/{epochs} | "
+                f"Train Loss = {np.mean(batch_losses):.4f} | "
+                f"Val Loss = {val_loss:.4f}"
+            )
 
+            # ---- Early Stopping Logic ----
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                patience_counter = 0
+
+                # Deep copy weights
+                best_weights = [w.copy() for w in self.weights]
+                best_biases = [b.copy() for b in self.biases]
+            else:
+                patience_counter += 1
+
+                if patience_counter >= patience:
+                    print(
+                        f"\n⏹ Early stopping triggered "
+                        f"(no improvement for {patience} epochs)."
+                    )
+
+                    # Restore best model
+                    self.weights = best_weights
+                    self.biases = best_biases
+                    break
+   
     #  PREDICT 
     def predict(self, X):
         a, _ = self.forward(X)
         return np.argmax(a[-1], axis=1)
 
-# 5) USER INPUTS
-# -----------------------
-print("Welcome to the Neural Network Trainer :)")
-print("=================================")
+
+# 5) INPUTS
+print("Neural Network Implementation\n")
 
 while True:
     try:
-        num_hidden = int(input("How many hidden layers? : "))
-        if num_hidden < 0: 
-            raise ValueError
+        num_hidden = int(input("How many hidden layers?  "))
+        if num_hidden < 0: raise ValueError
         break
     except ValueError:
         print("❌ Please enter a valid non-negative integer.")
@@ -198,8 +229,7 @@ while True:
 while True:
     try:
         learning_rate = float(input("\nLearning rate : "))
-        if learning_rate <= 0: 
-            raise ValueError
+        if learning_rate <= 0: raise ValueError
         break
     except ValueError:
         print("❌ Enter a positive number.")
@@ -207,14 +237,13 @@ while True:
 while True:
     try:
         epochs = int(input("Number of epochs : "))
-        if epochs <= 0: 
-            raise ValueError
+        if epochs <= 0: raise ValueError
         break
     except ValueError:
         print("❌ Enter a positive integer.")
 
+
 # 6) LOAD DATA
-# ----------------------
 print("\nLoading mnist.npz ...")
 X_train, y_train_oh, X_test, y_test_oh, y_train_raw, y_test_raw = load_mnist_npz()
 
@@ -227,24 +256,24 @@ y_val = y_train_oh[:val_size]
 X_train2 = X_train[val_size:]
 y_train2 = y_train_oh[val_size:]
 
+
 # 7) BUILD + TRAIN
-# --------------------------
 layers = [784] + hidden_layers + [10]
 nn = NeuralNetwork(layers, activation=activation, learning_rate=learning_rate)
 
 print("\nTraining Network...")
 nn.train(X_train2, y_train2, X_val, y_val, epochs=epochs, batch_size=128)
 
+
 # 8) TEST ACCURACY
-# ----------------------------
 pred_test = nn.predict(X_test)
 accuracy = np.mean(pred_test == y_test_raw)
 
+print("\n==============================")
 print(" Final Test Accuracy:", accuracy)
 print("==============================")
 
-# 9) INTERACTIVE PREDICTION
-# -------------------------------------------
+# 9) INTERACTIVE PREDICTION:
 while True:
     try:
         idx = int(input("\nEnter test image index (0-9999) or -1 to exit: "))
